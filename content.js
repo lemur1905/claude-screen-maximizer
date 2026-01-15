@@ -17,41 +17,30 @@
     const stickyBottom = document.querySelector('[class*="sticky"][class*="bottom-0"]');
     if (stickyBottom) return stickyBottom;
 
-    // In new chat view: the fieldset wraps the input area
-    const fieldset = document.querySelector('fieldset');
-    if (fieldset) return fieldset;
+    // Best approach: walk up from the actual editor to find its fieldset container
+    const prosemirror = document.querySelector('.ProseMirror');
+    if (prosemirror) {
+      let parent = prosemirror.parentElement;
+      while (parent && parent !== document.body) {
+        if (parent.tagName === 'FIELDSET') {
+          return parent;
+        }
+        parent = parent.parentElement;
+      }
+    }
+
+    // Fallback: find the visible fieldset (not the one with opacity-0)
+    const fieldsets = document.querySelectorAll('fieldset');
+    for (const fieldset of fieldsets) {
+      if (!fieldset.className.includes('opacity-0')) {
+        return fieldset;
+      }
+    }
 
     // Fallback: find container with bg-bg-000 class (the styled input box)
     const inputBox = document.querySelector('[class*="bg-bg-000"][class*="flex-col"]');
     if (inputBox) return inputBox;
 
-    // Fallback: walk up from ProseMirror
-    const prosemirror = document.querySelector('.ProseMirror');
-    if (prosemirror) {
-      let parent = prosemirror.parentElement;
-      let depth = 0;
-      while (parent && depth < 6) {
-        if (parent.tagName === 'FIELDSET') return parent;
-        const rect = parent.getBoundingClientRect();
-        if (rect.height > 100 && rect.width > 500) {
-          return parent;
-        }
-        parent = parent.parentElement;
-        depth++;
-      }
-    }
-
-    return null;
-  }
-
-  // Find the quick actions row (Write, Learn, Code, etc.)
-  function findQuickActions() {
-    const writeBtn = Array.from(document.querySelectorAll('button')).find(
-      b => b.textContent?.includes('Write')
-    );
-    if (writeBtn) {
-      return writeBtn.closest('[class*="flex"][class*="flex-wrap"]');
-    }
     return null;
   }
 
@@ -88,16 +77,10 @@
   // Toggle input visibility (Cmd + /)
   function toggleInputVisibility() {
     const inputContainer = findInputContainer();
-    const quickActions = findQuickActions();
 
     if (inputContainer) {
       inputHidden = !inputHidden;
       inputContainer.classList.toggle(HIDDEN_CLASS, inputHidden);
-
-      // Also hide quick actions row
-      if (quickActions) {
-        quickActions.classList.toggle(HIDDEN_CLASS, inputHidden);
-      }
 
       // If showing, focus the input
       if (!inputHidden) {
@@ -174,13 +157,9 @@
   function reapplyHiddenClasses() {
     if (inputHidden) {
       const inputContainer = findInputContainer();
-      const quickActions = findQuickActions();
 
       if (inputContainer && !inputContainer.classList.contains(HIDDEN_CLASS)) {
         inputContainer.classList.add(HIDDEN_CLASS);
-      }
-      if (quickActions && !quickActions.classList.contains(HIDDEN_CLASS)) {
-        quickActions.classList.add(HIDDEN_CLASS);
       }
     }
 
