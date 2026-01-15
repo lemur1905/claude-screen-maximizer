@@ -1,0 +1,51 @@
+/* Claude Screen Maximizer - Styles */
+
+/* Hidden class - applies to any element we want to hide */
+.claude-ext-hidden {
+  display: none !important;
+}
+
+/* ===== Layout adjustments when sidebar/top bar is hidden ===== */
+
+/* When sidebar is hidden, expand content to full width */
+body.claude-ext-topbar-hidden main {
+  margin-left: 0 !important;
+  padding-left: 0 !important;
+  max-width: 100% !important;
+}
+
+/* Hide the nav bar */
+body.claude-ext-topbar-hidden nav {
+  display: none !important;
+}
+
+/* Adjust main content container when in maximized mode */
+body.claude-ext-topbar-hidden [class*="w-full"][class*="relative"][class*="min-w-0"] {
+  margin-left: 0 !important;
+}
+
+/* ===== Smooth transitions for better UX ===== */
+
+nav,
+header,
+fieldset,
+[class*="z-header"],
+[class*="sticky"][class*="bottom-0"] {
+  transition: opacity 0.15s ease-out, transform 0.15s ease-out;
+}
+
+/* Hide conversation header when in maximized mode */
+body.claude-ext-topbar-hidden header {
+  display: none !important;
+}
+
+/* ===== Full-width mode when sidebar hidden ===== */
+
+body.claude-ext-topbar-hidden .mx-auto {
+  max-width: 95% !important;
+}
+
+/* Expand the chat content area */
+body.claude-ext-topbar-hidden [class*="max-w-"] {
+  max-width: 95% !important;
+}
