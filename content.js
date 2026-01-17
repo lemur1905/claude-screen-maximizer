@@ -129,27 +129,26 @@
 
   // Keyboard event handler
   function handleKeyDown(event) {
-    const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
-    const cmdOrCtrl = isMac ? event.metaKey : event.ctrlKey;
-
     // Use event.code for physical key (works regardless of Option key character transforms)
-    // On Mac, Option+/ produces the division sign, so we must check event.code
-    const isSlashKey = event.code === 'Slash' || event.key === '/';
+    // On Mac, Option+; produces ellipsis (…), so we must check event.code
+    const isSemicolonKey = event.code === 'Semicolon';
 
-    // Cmd/Ctrl + / = toggle input
-    if (cmdOrCtrl && isSlashKey && !event.altKey && !event.shiftKey) {
-      event.preventDefault();
-      event.stopPropagation();
-      toggleInputVisibility();
-      return;
-    }
+    if (isSemicolonKey) {
+      // Cmd + ; = toggle input
+      if (event.metaKey && !event.altKey) {
+        event.preventDefault();
+        event.stopPropagation();
+        toggleInputVisibility();
+        return;
+      }
 
-    // Option/Alt + / = toggle top bar and sidebar
-    if (event.altKey && isSlashKey && !cmdOrCtrl) {
-      event.preventDefault();
-      event.stopPropagation();
-      toggleTopBarVisibility();
-      return;
+      // Option + ; = toggle top bar and sidebar
+      if (event.altKey && !event.metaKey) {
+        event.preventDefault();
+        event.stopPropagation();
+        toggleTopBarVisibility();
+        return;
+      }
     }
   }
 
@@ -205,8 +204,8 @@
     setupObserver();
 
     console.log('[Claude Maximizer] Ready! Shortcuts:');
-    console.log('  Cmd + /    : Toggle input box');
-    console.log('  Option + / : Toggle top bar & sidebar');
+    console.log('  Cmd + ;    : Toggle input box');
+    console.log('  Option + ; : Toggle top bar & sidebar');
   }
 
   // Wait for DOM to be ready
