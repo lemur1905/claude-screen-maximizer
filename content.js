@@ -127,6 +127,21 @@
     console.log('[Claude Maximizer] Top bar/sidebar ' + (topBarHidden ? 'hidden' : 'shown'));
   }
 
+  // Hide input after sending a message
+  function hideInputAfterSend() {
+    if (inputHidden) return; // already hidden
+
+    // Small delay to let the message send before hiding
+    setTimeout(() => {
+      const inputContainer = findInputContainer();
+      if (inputContainer) {
+        inputHidden = true;
+        inputContainer.classList.add(HIDDEN_CLASS);
+        console.log('[Claude Maximizer] Input auto-hidden after send');
+      }
+    }, 150);
+  }
+
   // Keyboard event handler
   function handleKeyDown(event) {
     // Use event.code for physical key (works regardless of Option key character transforms)
@@ -148,6 +163,14 @@
         event.stopPropagation();
         toggleTopBarVisibility();
         return;
+      }
+    }
+
+    // Enter (without Shift) in the editor = message send → auto-hide input
+    if (event.key === 'Enter' && !event.shiftKey && !event.metaKey && !event.altKey) {
+      const editor = document.querySelector('.ProseMirror, [role="textbox"]');
+      if (editor && editor.contains(event.target)) {
+        hideInputAfterSend();
       }
     }
   }
