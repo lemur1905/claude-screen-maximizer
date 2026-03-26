@@ -127,18 +127,33 @@
     console.log('[Claude Maximizer] Top bar/sidebar ' + (topBarHidden ? 'hidden' : 'shown'));
   }
 
-  // Hide input after sending a message
-  function hideInputAfterSend() {
-    if (inputHidden) return; // already hidden
-
+  // Hide all UI elements after sending a message
+  function hideAllAfterSend() {
     // Small delay to let the message send before hiding
     setTimeout(() => {
-      const inputContainer = findInputContainer();
-      if (inputContainer) {
-        inputHidden = true;
-        inputContainer.classList.add(HIDDEN_CLASS);
-        console.log('[Claude Maximizer] Input auto-hidden after send');
+      if (!inputHidden) {
+        const inputContainer = findInputContainer();
+        if (inputContainer) {
+          inputHidden = true;
+          inputContainer.classList.add(HIDDEN_CLASS);
+        }
       }
+
+      if (!topBarHidden) {
+        topBarHidden = true;
+        const sidebar = findSidebar();
+        const topBar = findTopBar();
+        const conversationHeader = findConversationHeader();
+        const shareContainer = findShareContainer();
+
+        [sidebar, topBar, conversationHeader, shareContainer].forEach(el => {
+          if (el) el.classList.add(HIDDEN_CLASS);
+        });
+
+        document.body.classList.add('claude-ext-topbar-hidden');
+      }
+
+      console.log('[Claude Maximizer] UI auto-hidden after send');
     }, 150);
   }
 
@@ -170,7 +185,7 @@
     if (event.key === 'Enter' && !event.shiftKey && !event.metaKey && !event.altKey) {
       const editor = document.querySelector('.ProseMirror, [role="textbox"]');
       if (editor && editor.contains(event.target)) {
-        hideInputAfterSend();
+        hideAllAfterSend();
       }
     }
   }
