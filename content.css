@@ -52,15 +52,38 @@ body.claude-ext-topbar-hidden [class*="max-w-"] {
 
 /* ===== claude.ai/code specific ===== */
 
-/* Hide the gradient fades at the top and bottom of the conversation when
-   in any max-screen mode. Trade-off: partial-letter clipping at the
-   overflow boundary becomes visible (normal browser behavior). The user
-   prefers that over either a visible fade or a tall solid mask. */
+/* Hide the gradient fades at the top and bottom of the conversation
+   in max-screen mode. They're aesthetic and distract from reading. */
 body.claude-ext-topbar-hidden .epitaxy-top-scrim,
 body.claude-ext-topbar-hidden .epitaxy-bottom-scrim,
 body.claude-ext-input-hidden .epitaxy-top-scrim,
 body.claude-ext-input-hidden .epitaxy-bottom-scrim {
   display: none !important;
+}
+
+/* claude.ai/code uses a CONTAINED scroll container (.h-full.overflow-y-auto)
+   rather than page-level scrolling. Its overflow:hidden boundary creates
+   visible partial-letter clipping at the top and bottom edges — which the
+   original .epitaxy-*-scrim gradients hid. With those scrims gone we apply
+   a tiny 8px mask-image fade right at the boundaries: small enough to be
+   imperceptible as "fading text", large enough to soften the partial-letter
+   edge so it doesn't draw the eye. */
+body.claude-ext-topbar-hidden .h-full.overflow-y-auto.overflow-x-hidden,
+body.claude-ext-input-hidden .h-full.overflow-y-auto.overflow-x-hidden {
+  mask-image: linear-gradient(
+    to bottom,
+    transparent 0,
+    black 8px,
+    black calc(100% - 8px),
+    transparent 100%
+  ) !important;
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    transparent 0,
+    black 8px,
+    black calc(100% - 8px),
+    transparent 100%
+  ) !important;
 }
 
 /* When the top bar is hidden on /code, also drop the chat-content max-width
