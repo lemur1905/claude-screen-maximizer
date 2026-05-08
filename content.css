@@ -80,3 +80,11 @@ body.claude-ext-input-hidden .epitaxy-bottom-scrim {
 body.claude-ext-topbar-hidden .epitaxy-chat-size {
   max-width: none !important;
 }
+
+/* The .dframe-sidebar is positioned absolutely; the layout reserves space
+   for it via padding-left: 288px on .dframe-content-inner (sidebar 280px
+   + 8px margin). When we display:none the sidebar, the padding stays —
+   wasting ~288px on the left of the conversation. Drop it in max mode. */
+body.claude-ext-topbar-hidden .dframe-content-inner {
+  padding-left: 0 !important;
+}
