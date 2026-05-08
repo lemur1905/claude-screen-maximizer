@@ -69,7 +69,7 @@ body.claude-ext-input-hidden .epitaxy-bottom-scrim {
    sharp edges instead of a gradient (the user prefers no fade). */
 body.claude-ext-topbar-hidden .h-full.overflow-y-auto.overflow-x-hidden,
 body.claude-ext-input-hidden .h-full.overflow-y-auto.overflow-x-hidden {
-  clip-path: inset(8px 0) !important;
+  clip-path: inset(1px 0) !important;
 }
 
 /* When the top bar is hidden on /code, also drop the chat-content max-width
