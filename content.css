@@ -63,27 +63,13 @@ body.claude-ext-input-hidden .epitaxy-bottom-scrim {
 
 /* claude.ai/code uses a CONTAINED scroll container (.h-full.overflow-y-auto)
    rather than page-level scrolling. Its overflow:hidden boundary creates
-   visible partial-letter clipping at the top and bottom edges — which the
-   original .epitaxy-*-scrim gradients hid. With those scrims gone we apply
-   a tiny 8px mask-image fade right at the boundaries: small enough to be
-   imperceptible as "fading text", large enough to soften the partial-letter
-   edge so it doesn't draw the eye. */
+   visible partial-letter clipping at the top and bottom edges. With the
+   site's gradient scrims hidden, we use a HARD 8px clip-path inset on the
+   scroll container instead — same masking as a mask-image fade, but with
+   sharp edges instead of a gradient (the user prefers no fade). */
 body.claude-ext-topbar-hidden .h-full.overflow-y-auto.overflow-x-hidden,
 body.claude-ext-input-hidden .h-full.overflow-y-auto.overflow-x-hidden {
-  mask-image: linear-gradient(
-    to bottom,
-    transparent 0,
-    black 8px,
-    black calc(100% - 8px),
-    transparent 100%
-  ) !important;
-  -webkit-mask-image: linear-gradient(
-    to bottom,
-    transparent 0,
-    black 8px,
-    black calc(100% - 8px),
-    transparent 100%
-  ) !important;
+  clip-path: inset(8px 0) !important;
 }
 
 /* When the top bar is hidden on /code, also drop the chat-content max-width
