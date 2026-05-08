@@ -344,31 +344,12 @@
     return observer;
   }
 
-  // Sample the conversation reading area's background colour and expose it as
-  // a CSS variable so the scrim-masking rules adapt to theme (light/dark).
-  // The .epitaxy-top-scrim / .epitaxy-bottom-scrim gradients use the same
-  // colour as <main class="dframe-content">'s computed background, which
-  // changes with the user's theme. Hard-coding light-mode colours would
-  // produce visible bands in dark mode.
-  function syncContentBgVar() {
-    const main = document.querySelector('main.dframe-content');
-    if (!main) return;
-    const bg = getComputedStyle(main).backgroundColor;
-    if (bg && bg !== 'rgba(0, 0, 0, 0)' && bg !== 'transparent') {
-      document.documentElement.style.setProperty('--claude-ext-content-bg', bg);
-    }
-  }
-
   // Initialize
   function init() {
     console.log('[Claude Maximizer] Initializing...');
 
     // Add keyboard listener
     document.addEventListener('keydown', handleKeyDown, true);
-
-    // Sample the page bg now and on subsequent updates (theme toggles, etc.)
-    syncContentBgVar();
-    setInterval(syncContentBgVar, 2000);
 
     // Set up observer for SPA navigation
     setupObserver();
