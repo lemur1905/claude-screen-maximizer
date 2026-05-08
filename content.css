@@ -49,3 +49,34 @@ body.claude-ext-topbar-hidden .mx-auto {
 body.claude-ext-topbar-hidden [class*="max-w-"] {
   max-width: 95% !important;
 }
+
+/* ===== claude.ai/code specific ===== */
+
+/* Replace the gradient fades at the top and bottom of the conversation
+   with a solid block of the conversation area's background colour.
+   This keeps text near the boundary masked cleanly (no half-letter clipping)
+   without the visible gradient transition. The colour comes from a CSS
+   variable populated at runtime by content.js (syncContentBgVar) so dark
+   mode is supported; falls back to the current light-mode bg.
+
+   Height is bumped to 60px so the block is tall enough to fully cover any
+   partial line near the boundary — including h1/h2 headings which can be
+   ~36–46px tall. The default 32px scrim leaks the bottom of headings, even
+   with the original gradient (the gradient just made it less obvious). */
+body.claude-ext-topbar-hidden .epitaxy-top-scrim,
+body.claude-ext-topbar-hidden .epitaxy-bottom-scrim,
+body.claude-ext-input-hidden .epitaxy-top-scrim,
+body.claude-ext-input-hidden .epitaxy-bottom-scrim {
+  background-image: none !important;
+  background-color: var(--claude-ext-content-bg, rgb(253, 253, 252)) !important;
+  height: 60px !important;
+}
+
+/* When the top bar is hidden on /code, also drop the chat-content max-width
+   so messages fill the viewport. By default .epitaxy-chat-size carries a
+   ~1353px cap, which leaves wasted space on wide viewports — especially
+   when the user toggled from a sidebar-open state, since the cap doesn't
+   change after we display:none the sidebar. */
+body.claude-ext-topbar-hidden .epitaxy-chat-size {
+  max-width: none !important;
+}
