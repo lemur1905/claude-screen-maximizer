@@ -1,24 +1,24 @@
-// Renders the toolbar icon at runtime so the color reflects the global
-// "enabled" preference. Colored when on, grey when off. The service worker
-// wakes on chrome.storage.onChanged, redraws via OffscreenCanvas, and
-// passes the resulting ImageData to chrome.action.setIcon.
+// Renders the toolbar icon at runtime. Colored when at least one feature
+// is currently hiding something on the page (i.e. the extension is doing
+// its job right now), grey when both features are inactive. Wakes on
+// chrome.storage.onChanged, redraws via OffscreenCanvas, and passes the
+// resulting ImageData to chrome.action.setIcon.
 
-const ENABLED_KEY = 'enabled';
+const PROMPT_KEY = 'prompt_hidden';
+const MENUS_KEY = 'menus_hidden';
 const COLOR_ON = '#c69376';
 const COLOR_OFF = '#8e8e93';  // iOS grey
 
-function drawIcon(enabled, size) {
+function drawIcon(active, size) {
   const canvas = new OffscreenCanvas(size, size);
   const ctx = canvas.getContext('2d');
   const r = Math.max(2, Math.round(size * 0.22));
 
-  // Background — rounded square in the state color
-  ctx.fillStyle = enabled ? COLOR_ON : COLOR_OFF;
+  ctx.fillStyle = active ? COLOR_ON : COLOR_OFF;
   ctx.beginPath();
   ctx.roundRect(0, 0, size, size, r);
   ctx.fill();
 
-  // White letter monogram identifying the extension.
   ctx.fillStyle = '#ffffff';
   ctx.font = `700 ${Math.round(size * 0.72)}px -apple-system, "SF Pro Display", system-ui, sans-serif`;
   ctx.textAlign = 'center';
@@ -28,12 +28,12 @@ function drawIcon(enabled, size) {
   return ctx.getImageData(0, 0, size, size);
 }
 
-async function updateIcon(enabled) {
+async function updateIcon(active) {
   try {
     await chrome.action.setIcon({
       imageData: {
-        16: drawIcon(enabled, 16),
-        32: drawIcon(enabled, 32),
+        16: drawIcon(active, 16),
+        32: drawIcon(active, 32),
       },
     });
   } catch (e) {
@@ -42,8 +42,9 @@ async function updateIcon(enabled) {
 }
 
 async function applyFromStorage() {
-  const res = await chrome.storage.sync.get([ENABLED_KEY]);
-  await updateIcon(res[ENABLED_KEY] !== false); // default true
+  const res = await chrome.storage.sync.get([PROMPT_KEY, MENUS_KEY]);
+  const active = res[PROMPT_KEY] === true || res[MENUS_KEY] === true;
+  await updateIcon(active);
 }
 
 chrome.runtime.onInstalled.addListener(applyFromStorage);
@@ -51,10 +52,9 @@ chrome.runtime.onStartup.addListener(applyFromStorage);
 
 chrome.storage.onChanged.addListener((changes, area) => {
   if (area !== 'sync') return;
-  if (typeof changes[ENABLED_KEY]?.newValue === 'boolean') {
-    updateIcon(changes[ENABLED_KEY].newValue);
+  if (PROMPT_KEY in changes || MENUS_KEY in changes) {
+    applyFromStorage();
   }
 });
 
-// On every cold-start of the service worker, also apply current state.
 applyFromStorage();

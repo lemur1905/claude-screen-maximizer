@@ -46,16 +46,14 @@
     }
 
     .header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 16px;
-      padding: 18px 22px;
+      padding: 18px 22px 16px;
       border-bottom: 1px solid var(--divider);
     }
     .title { font-size: 19px; font-weight: 600; line-height: 1.15; }
 
-    /* Label for the footer-row "Shortcut" */
+    .row { padding: 14px 22px; }
+    .row + .row { border-top: 1px solid var(--divider); }
+
     .label {
       color: var(--fg);
       font-size: 14px;
@@ -63,27 +61,32 @@
       line-height: 1.25;
     }
 
+    .row-main {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    /* The clickable shortcut editor — label on the left, keycaps right-aligned.
+       Flex:1 so it fills the row and pushes the toggle to the far right. */
     .bottom {
-      padding: 14px 22px 14px;
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
       cursor: pointer;
       user-select: none;
     }
     .bottom:focus-visible { outline: none; }
 
-    .footer-line {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;  /* Shortcut label vertically centers with kbd-display */
-      gap: 16px;
-    }
-
     .kbd-display {
-      width: auto;            /* grow to fit content */
-      min-width: 56px;        /* default state matches the toggle width */
+      width: auto;
+      min-width: 56px;
       height: 26px;
       display: inline-flex;
       align-items: center;
-      justify-content: center; /* keys centered horizontally inside */
+      justify-content: center;
       gap: 3px;
       padding: 0 6px;
       border-radius: 7px;
@@ -169,8 +172,8 @@
       }
     }
 
-    /* error-line collapses to zero when there's no error, so the footer-line
-       sits at the true vertical center of .bottom. Grows when an error appears. */
+    /* error-line collapses to zero when there's no error, so the row-main
+       stays vertically centered when no error is shown. */
     .error-line { padding-top: 0; }
     .error-line:has(.shown) { padding-top: 8px; }
     .kbd-error {
@@ -221,21 +224,41 @@
 <body class="no-anim">
   <div class="header">
     <div class="title">Maximize Claude</div>
-    <label class="toggle">
-      <input type="checkbox" id="toggle-input">
-      <span class="slider"></span>
-    </label>
   </div>
-  <div class="bottom" id="bottom" tabindex="0" role="button" aria-label="Edit keyboard shortcut">
-    <div class="footer-line">
-      <span class="label">Shortcut</span>
-      <span class="kbd-display" id="kbd-display">
-        <span class="placeholder">type…</span>
-        <span class="keycaps" id="keycaps"></span>
-      </span>
+  <div class="row" data-feature="prompt">
+    <div class="row-main">
+      <div class="bottom" tabindex="0" role="button" aria-label="Edit Prompt Box shortcut">
+        <span class="label">Prompt Box</span>
+        <span class="kbd-display">
+          <span class="placeholder">type…</span>
+          <span class="keycaps"></span>
+        </span>
+      </div>
+      <label class="toggle">
+        <input type="checkbox" class="toggle-input">
+        <span class="slider"></span>
+      </label>
     </div>
     <div class="error-line" aria-live="polite">
-      <span class="kbd-error" id="kbd-error"></span>
+      <span class="kbd-error"></span>
+    </div>
+  </div>
+  <div class="row" data-feature="menus">
+    <div class="row-main">
+      <div class="bottom" tabindex="0" role="button" aria-label="Edit Menus shortcut">
+        <span class="label">Menus</span>
+        <span class="kbd-display">
+          <span class="placeholder">type…</span>
+          <span class="keycaps"></span>
+        </span>
+      </div>
+      <label class="toggle">
+        <input type="checkbox" class="toggle-input">
+        <span class="slider"></span>
+      </label>
+    </div>
+    <div class="error-line" aria-live="polite">
+      <span class="kbd-error"></span>
     </div>
   </div>
   <script src="popup.js"></script>

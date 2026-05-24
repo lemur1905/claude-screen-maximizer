@@ -1,21 +1,28 @@
-const SHORTCUT_KEY = 'shortcut';
-const ENABLED_KEY = 'enabled';
-const DEFAULT_SHORTCUT = { code: 'Semicolon', meta: true, ctrl: false, alt: false, shift: false };
+// Each row has a toggle (current hidden state) and a click-to-record
+// shortcut editor. Toggle ON means "this element is currently hidden on
+// the page". Storage is the single source of truth — content.js subscribes
+// to the same keys so the toggle, the shortcut, and the page stay in sync.
 
-const toggleEl = document.getElementById('toggle-input');
-const bottomEl = document.getElementById('bottom');
-const displayEl = document.getElementById('kbd-display');
-const keycapsEl = document.getElementById('keycaps');
-const errorEl = document.getElementById('kbd-error');
+const FEATURES = [
+  {
+    id: 'prompt',
+    hiddenKey: 'prompt_hidden',
+    shortcutKey: 'prompt_shortcut',
+    defaultShortcut: { code: 'Semicolon', meta: true, ctrl: false, alt: false, shift: false },
+  },
+  {
+    id: 'menus',
+    hiddenKey: 'menus_hidden',
+    shortcutKey: 'menus_shortcut',
+    defaultShortcut: { code: 'Semicolon', meta: false, ctrl: false, alt: true, shift: false },
+  },
+];
 
 const IS_MAC = navigator.platform.toUpperCase().includes('MAC');
 const PURE_MODIFIERS = new Set([
   'MetaLeft', 'MetaRight', 'ControlLeft', 'ControlRight',
   'AltLeft', 'AltRight', 'ShiftLeft', 'ShiftRight',
 ]);
-
-let currentShortcut = DEFAULT_SHORTCUT;
-let recording = false;
 
 function formatCode(code) {
   return code
@@ -45,78 +52,121 @@ function shortcutToKeys(s) {
   return keys;
 }
 
-function renderKeycaps(keys) {
-  keycapsEl.innerHTML = '';
-  for (const k of keys) {
-    const cap = document.createElement('span');
-    cap.className = 'keycap';
-    cap.textContent = k;
-    keycapsEl.appendChild(cap);
+// Module-level: only one row can record at a time, since the popup window
+// captures keystrokes globally and they need to route to the right row.
+let recordingRow = null;
+
+class Row {
+  constructor(feature) {
+    this.feature = feature;
+    this.rowEl = document.querySelector(`.row[data-feature="${feature.id}"]`);
+    this.bottomEl = this.rowEl.querySelector('.bottom');
+    this.displayEl = this.rowEl.querySelector('.kbd-display');
+    this.keycapsEl = this.rowEl.querySelector('.keycaps');
+    this.errorEl = this.rowEl.querySelector('.kbd-error');
+    this.toggleEl = this.rowEl.querySelector('.toggle-input');
+    this.currentShortcut = feature.defaultShortcut;
+
+    this.bottomEl.addEventListener('click', () => {
+      if (this.isRecording()) this.stopRecording();
+      else this.startRecording();
+    });
+    this.bottomEl.addEventListener('keydown', (e) => {
+      if (this.isRecording()) return;
+      if (e.code === 'Enter' || e.code === 'Space') {
+        e.preventDefault();
+        this.startRecording();
+      }
+    });
+    this.bottomEl.addEventListener('blur', () => {
+      if (this.isRecording()) this.stopRecording();
+    });
+    // User flipped the toggle → write the new hidden state to storage.
+    // content.js's storage listener will pick it up and update the page.
+    this.toggleEl.addEventListener('change', () => {
+      chrome.storage.sync.set({ [feature.hiddenKey]: this.toggleEl.checked });
+    });
+  }
+
+  isRecording() { return recordingRow === this; }
+
+  renderKeycaps(keys) {
+    this.keycapsEl.innerHTML = '';
+    for (const k of keys) {
+      const cap = document.createElement('span');
+      cap.className = 'keycap';
+      cap.textContent = k;
+      this.keycapsEl.appendChild(cap);
+    }
+  }
+
+  showError(msg) {
+    this.errorEl.textContent = msg;
+    this.errorEl.classList.add('shown');
+  }
+  clearError() {
+    this.errorEl.classList.remove('shown');
+    this.errorEl.textContent = '';
+  }
+
+  flashSave() {
+    this.displayEl.classList.remove('saved');
+    void this.displayEl.offsetWidth;
+    this.displayEl.classList.add('saved');
+    setTimeout(() => this.displayEl.classList.remove('saved'), 1450);
+  }
+
+  suppressRingAfterSave() {
+    this.bottomEl.classList.add('just-saved');
+    setTimeout(() => this.bottomEl.classList.remove('just-saved'), 500);
+  }
+
+  startRecording() {
+    if (recordingRow && recordingRow !== this) recordingRow.stopRecording();
+    recordingRow = this;
+    this.bottomEl.classList.add('recording', 'empty');
+    this.keycapsEl.innerHTML = '';
+    this.clearError();
+    this.bottomEl.focus();
+  }
+
+  stopRecording() {
+    if (recordingRow === this) recordingRow = null;
+    this.bottomEl.classList.remove('recording', 'empty');
+    this.clearError();
+    this.renderKeycaps(shortcutToKeys(this.currentShortcut));
+  }
+
+  async saveShortcut(s) {
+    this.currentShortcut = s;
+    await chrome.storage.sync.set({ [this.feature.shortcutKey]: s });
+    this.stopRecording();
+    this.flashSave();
+    this.suppressRingAfterSave();
+  }
+
+  attemptSave(s) {
+    if (!s.meta && !s.ctrl && !s.alt && !s.shift) {
+      this.showError(IS_MAC
+        ? 'Add a modifier (⌘ ⌥ ⌃ ⇧)'
+        : 'Add a modifier (Ctrl, Alt, or Shift)');
+      return;
+    }
+    this.saveShortcut(s);
+  }
+
+  setShortcut(s) {
+    this.currentShortcut = s;
+    if (!this.isRecording()) this.renderKeycaps(shortcutToKeys(s));
+  }
+
+  setHidden(b) {
+    this.toggleEl.checked = b;
   }
 }
 
-function showError(msg) {
-  errorEl.textContent = msg;
-  errorEl.classList.add('shown');
-}
-function clearError() {
-  errorEl.classList.remove('shown');
-  errorEl.textContent = '';
-}
-
-function flashSave() {
-  // Force-restart the animation by re-adding the class
-  displayEl.classList.remove('saved');
-  void displayEl.offsetWidth;
-  displayEl.classList.add('saved');
-  setTimeout(() => displayEl.classList.remove('saved'), 1450);
-}
-
-// After a save, suppress the focus-ring for 500ms so the green flash plays
-// uninterrupted. The CSS :hover rule then takes over: if the cursor is over
-// the box when the timer fires, the ring is back; if not, it stays gone
-// until the user hovers again. This is the same outcome as the earlier
-// move+hovering logic, but without the brittle bottomEl.matches(':hover')
-// check that could read false even when the cursor was over the box.
-function suppressRingAfterSave() {
-  bottomEl.classList.add('just-saved');
-  setTimeout(() => bottomEl.classList.remove('just-saved'), 500);
-}
-
-function startRecording() {
-  if (recording) return;
-  recording = true;
-  bottomEl.classList.add('recording', 'empty'); // empty → 'type' placeholder shows
-  keycapsEl.innerHTML = '';
-  clearError();
-  bottomEl.focus();
-}
-
-function stopRecording() {
-  recording = false;
-  bottomEl.classList.remove('recording', 'empty');
-  clearError();
-  renderKeycaps(shortcutToKeys(currentShortcut));
-}
-
-async function saveShortcut(s) {
-  currentShortcut = s;
-  await chrome.storage.sync.set({ [SHORTCUT_KEY]: s });
-  stopRecording();
-  flashSave();
-  suppressRingAfterSave();
-}
-
-function attemptSave(s) {
-  // Validation: require at least one modifier so a bare letter can't fire on every keystroke
-  if (!s.meta && !s.ctrl && !s.alt && !s.shift) {
-    showError(IS_MAC
-      ? 'Add a modifier (⌘ ⌥ ⌃ ⇧)'
-      : 'Add a modifier (Ctrl, Alt, or Shift)');
-    return;
-  }
-  saveShortcut(s);
-}
+const rows = FEATURES.map((f) => new Row(f));
+const rowById = Object.fromEntries(rows.map((r) => [r.feature.id, r]));
 
 function shortcutMatches(e, s) {
   return s
@@ -128,110 +178,79 @@ function shortcutMatches(e, s) {
 }
 
 window.addEventListener('keydown', (e) => {
-  if (recording) {
-    // Recording mode keydown handling
+  if (recordingRow) {
     if (e.code === 'Escape') {
       e.preventDefault();
-      stopRecording();
+      recordingRow.stopRecording();
       return;
     }
     if (PURE_MODIFIERS.has(e.code)) {
-      clearError();
-      bottomEl.classList.remove('empty'); // hide placeholder while a modifier is held
-      renderKeycaps(shortcutToKeys({
+      recordingRow.clearError();
+      recordingRow.bottomEl.classList.remove('empty');
+      recordingRow.renderKeycaps(shortcutToKeys({
         code: '',
-        meta: e.metaKey,
-        ctrl: e.ctrlKey,
-        alt: e.altKey,
-        shift: e.shiftKey,
+        meta: e.metaKey, ctrl: e.ctrlKey, alt: e.altKey, shift: e.shiftKey,
       }));
       return;
     }
     e.preventDefault();
     e.stopPropagation();
-    attemptSave({
+    recordingRow.attemptSave({
       code: e.code,
-      meta: e.metaKey,
-      ctrl: e.ctrlKey,
-      alt: e.altKey,
-      shift: e.shiftKey,
+      meta: e.metaKey, ctrl: e.ctrlKey, alt: e.altKey, shift: e.shiftKey,
     });
     return;
   }
-  // Not recording: if user fires the configured shortcut while the popup is
-  // focused, flip the toggle here too — content.js never sees the keystroke
-  // because the popup window captures it.
-  if (shortcutMatches(e, currentShortcut)) {
-    e.preventDefault();
-    e.stopPropagation();
-    const next = !toggleEl.checked;
-    toggleEl.checked = next;
-    chrome.storage.sync.set({ [ENABLED_KEY]: next });
+
+  // Not recording: shortcut fired while popup has focus. content.js never
+  // sees it (popup window captures keystrokes), so we write the new hidden
+  // state here. The storage listener updates the toggle.
+  for (const row of rows) {
+    if (shortcutMatches(e, row.currentShortcut)) {
+      e.preventDefault();
+      e.stopPropagation();
+      chrome.storage.sync.set({ [row.feature.hiddenKey]: !row.toggleEl.checked });
+      return;
+    }
   }
 }, true);
 
 window.addEventListener('keyup', (e) => {
-  if (!recording) return;
+  if (!recordingRow) return;
   if (!PURE_MODIFIERS.has(e.code)) return;
   if (e.metaKey || e.ctrlKey || e.altKey || e.shiftKey) {
-    bottomEl.classList.remove('empty');
-    renderKeycaps(shortcutToKeys({
+    recordingRow.bottomEl.classList.remove('empty');
+    recordingRow.renderKeycaps(shortcutToKeys({
       code: '',
-      meta: e.metaKey,
-      ctrl: e.ctrlKey,
-      alt: e.altKey,
-      shift: e.shiftKey,
+      meta: e.metaKey, ctrl: e.ctrlKey, alt: e.altKey, shift: e.shiftKey,
     }));
   } else {
-    // All modifiers released — back to the 'type' placeholder
-    bottomEl.classList.add('empty');
-    keycapsEl.innerHTML = '';
+    recordingRow.bottomEl.classList.add('empty');
+    recordingRow.keycapsEl.innerHTML = '';
   }
 }, true);
 
-bottomEl.addEventListener('click', () => {
-  if (recording) stopRecording();
-  else startRecording();
-});
-bottomEl.addEventListener('keydown', (e) => {
-  if (recording) return;
-  if (e.code === 'Enter' || e.code === 'Space') {
-    e.preventDefault();
-    startRecording();
-  }
-});
-// If recording is active and focus leaves the bottom (e.g. user clicked the
-// toggle), revert to the prior shortcut rather than leaving a "type…" field.
-bottomEl.addEventListener('blur', () => {
-  if (recording) stopRecording();
-});
-
-toggleEl.addEventListener('change', async () => {
-  const enabled = toggleEl.checked;
-  await chrome.storage.sync.set({ [ENABLED_KEY]: enabled });
-});
-
-// React if the enabled value changes externally (e.g. the user presses the
-// keyboard shortcut while the popup happens to be open) so the toggle in the
-// popup stays in sync with reality.
 chrome.storage.onChanged.addListener((changes, area) => {
   if (area !== 'sync') return;
-  if (typeof changes[ENABLED_KEY]?.newValue === 'boolean') {
-    toggleEl.checked = changes[ENABLED_KEY].newValue;
-  }
-  if (changes[SHORTCUT_KEY]?.newValue) {
-    currentShortcut = { ...DEFAULT_SHORTCUT, ...changes[SHORTCUT_KEY].newValue };
-    if (!recording) renderKeycaps(shortcutToKeys(currentShortcut));
+  for (const feature of FEATURES) {
+    const row = rowById[feature.id];
+    if (typeof changes[feature.hiddenKey]?.newValue === 'boolean') {
+      row.setHidden(changes[feature.hiddenKey].newValue);
+    }
+    if (changes[feature.shortcutKey]?.newValue) {
+      row.setShortcut({ ...feature.defaultShortcut, ...changes[feature.shortcutKey].newValue });
+    }
   }
 });
 
 async function load() {
-  const res = await chrome.storage.sync.get([ENABLED_KEY, SHORTCUT_KEY]);
-  toggleEl.checked = res[ENABLED_KEY] !== false; // default true
-  currentShortcut = res[SHORTCUT_KEY] || DEFAULT_SHORTCUT;
-  renderKeycaps(shortcutToKeys(currentShortcut));
-  // Wait a frame so the just-set state is committed to the DOM, then remove
-  // .no-anim so future user toggles animate normally.
+  const keys = FEATURES.flatMap((f) => [f.hiddenKey, f.shortcutKey]);
+  const res = await chrome.storage.sync.get(keys);
+  for (const feature of FEATURES) {
+    const row = rowById[feature.id];
+    row.setHidden(res[feature.hiddenKey] === true); // default false (visible)
+    row.setShortcut(res[feature.shortcutKey] || feature.defaultShortcut);
+  }
   requestAnimationFrame(() => {
     document.body.classList.remove('no-anim');
   });
