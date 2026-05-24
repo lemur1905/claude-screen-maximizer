@@ -1,8 +1,17 @@
 {
   "manifest_version": 3,
   "name": "Claude Screen Maximizer",
-  "version": "1.0",
+  "version": "1.1.0",
   "description": "Keyboard shortcuts to hide UI elements on Claude.ai for maximum screen real estate",
+  "permissions": ["storage"],
+  "host_permissions": ["https://claude.ai/*"],
+  "background": {
+    "service_worker": "service_worker.js"
+  },
+  "action": {
+    "default_title": "Claude Screen Maximizer",
+    "default_popup": "popup.html"
+  },
   "content_scripts": [
     {
       "matches": ["https://claude.ai/*"],

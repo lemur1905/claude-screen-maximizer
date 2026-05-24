@@ -1,0 +1,243 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Maximize Claude</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      --bg: #ffffff;
+      --fg: #1d1d1f;
+      --fg-secondary: #6e6e73;
+      --placeholder: #b8b8be;
+      --accent: #007aff;
+      --accent-ring: rgba(0, 122, 255, 0.85);
+      --on: #34c759;
+      --on-soft: rgba(52, 199, 89, 0.18);
+      --off: #d1d1d6;
+      --danger: #ff3b30;
+      --divider: rgba(60,60,67,0.18);
+      --keycap-bg: #ffffff;
+      --keycap-border: rgba(60,60,67,0.28);
+      --keycap-border-soft: rgba(60,60,67,0.14);
+      --keycap-shadow: rgba(0,0,0,0.08);
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #1c1c1e;
+        --fg: #ffffff;
+        --fg-secondary: #aeaeb2;
+        --placeholder: #6e6e73;
+        --off: #39393b;
+        --divider: rgba(255,255,255,0.18);
+        --keycap-bg: #2c2c2e;
+        --keycap-border: rgba(255,255,255,0.22);
+        --keycap-border-soft: rgba(255,255,255,0.10);
+        --keycap-shadow: rgba(0,0,0,0.35);
+      }
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; -webkit-font-smoothing: antialiased; }
+    body {
+      background: var(--bg);
+      color: var(--fg);
+      font: 15px/1.25 -apple-system, "SF Pro Text", system-ui, sans-serif;
+      width: 360px;
+    }
+
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+      padding: 18px 22px;
+      border-bottom: 1px solid var(--divider);
+    }
+    .title { font-size: 19px; font-weight: 600; line-height: 1.15; }
+
+    /* Label for the footer-row "Shortcut" */
+    .label {
+      color: var(--fg);
+      font-size: 14px;
+      font-weight: 500;
+      line-height: 1.25;
+    }
+
+    .bottom {
+      padding: 14px 22px 14px;
+      cursor: pointer;
+      user-select: none;
+    }
+    .bottom:focus-visible { outline: none; }
+
+    .footer-line {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;  /* Shortcut label vertically centers with kbd-display */
+      gap: 16px;
+    }
+
+    .kbd-display {
+      width: auto;            /* grow to fit content */
+      min-width: 56px;        /* default state matches the toggle width */
+      height: 26px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center; /* keys centered horizontally inside */
+      gap: 3px;
+      padding: 0 6px;
+      border-radius: 7px;
+      transition: box-shadow 120ms ease;
+    }
+    .keycaps { display: inline-flex; gap: 3px; }
+    .keycap {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 20px;
+      padding: 0 4px;
+      height: 20px;
+      background: var(--keycap-bg);
+      border: 1px solid var(--keycap-border);
+      border-radius: 5px;
+      font: 500 12px/1 -apple-system, "SF Pro Text", system-ui, sans-serif;
+      color: var(--fg);
+      box-shadow: 0 1px 1px var(--keycap-shadow);
+      transition: color 120ms ease, border-color 120ms ease;
+    }
+    .placeholder {
+      display: none;
+      color: var(--placeholder);
+      font: italic 13px -apple-system, "SF Pro Text", system-ui, sans-serif;
+      line-height: 1;
+    }
+    .bottom.recording.empty .placeholder { display: inline; }
+    .bottom.recording.empty .keycaps { display: none; }
+
+    /* One ring color for all interactive states — grey. */
+    .bottom:hover .kbd-display,
+    .bottom:focus-visible .kbd-display,
+    .bottom.recording .kbd-display {
+      box-shadow: 0 0 0 2px var(--fg-secondary);
+    }
+    /* After a successful save we suppress the ring entirely until the cursor
+       next moves — gives a clean moment for the green save flash. The class
+       is cleared on the next mousemove (handled in popup.js). */
+    .bottom.just-saved:hover .kbd-display,
+    .bottom.just-saved:focus-visible .kbd-display {
+      box-shadow: none;
+    }
+
+    /* On hover (but NOT yet recording) ghost the stored-shortcut keycaps to
+       signal "these will be replaced if you click". */
+    .bottom:hover:not(.recording) .keycap,
+    .bottom:focus-visible:not(.recording) .keycap {
+      color: var(--placeholder);
+      border-color: var(--keycap-border-soft);
+    }
+
+    /* Blinking cursor while recording */
+    .bottom.recording .kbd-display::after {
+      content: "";
+      display: inline-block;
+      width: 2px;
+      height: 16px;
+      background: currentColor;
+      animation: blink 1.06s steps(1) infinite;
+      vertical-align: middle;
+      flex-shrink: 0;
+    }
+    @keyframes blink {
+      0%, 50% { opacity: 1; }
+      50.01%, 100% { opacity: 0; }
+    }
+
+    /* Save-flash — brighter and held longer */
+    .kbd-display.saved .keycap {
+      animation: saveFlash 1400ms ease-out;
+    }
+    @keyframes saveFlash {
+      0%, 40% {
+        box-shadow: 0 0 0 3px var(--on);
+        border-color: var(--on);
+        background: rgba(52, 199, 89, 0.22);
+      }
+      100% {
+        box-shadow: 0 1px 1px var(--keycap-shadow);
+        border-color: var(--keycap-border);
+        background: var(--keycap-bg);
+      }
+    }
+
+    /* error-line collapses to zero when there's no error, so the footer-line
+       sits at the true vertical center of .bottom. Grows when an error appears. */
+    .error-line { padding-top: 0; }
+    .error-line:has(.shown) { padding-top: 8px; }
+    .kbd-error {
+      color: var(--danger);
+      font-size: 12px;
+      display: none;
+    }
+    .kbd-error.shown { display: inline; }
+
+    /* iOS-style toggle — same outer dimensions as the kbd-display */
+    .toggle {
+      position: relative;
+      width: 56px;
+      height: 26px;
+      flex-shrink: 0;
+    }
+    /* During initial load we disable the toggle's transition so it doesn't
+       animate from off → on (the default checkbox state) → stored state.
+       The .no-anim class is removed by popup.js after the first storage read. */
+    body.no-anim .toggle .slider,
+    body.no-anim .toggle .slider::before {
+      transition: none !important;
+    }
+    .toggle input {
+      opacity: 0; width: 100%; height: 100%; margin: 0;
+      cursor: pointer; position: absolute; inset: 0; z-index: 1;
+    }
+    .toggle .slider {
+      position: absolute; inset: 0;
+      background: var(--off);
+      border-radius: 999px;
+      transition: background-color 180ms ease;
+    }
+    .toggle .slider::before {
+      content: "";
+      position: absolute;
+      width: 22px; height: 22px;
+      left: 2px; top: 2px;
+      background: white;
+      border-radius: 50%;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.18), 0 0 0 0.5px rgba(0,0,0,0.04);
+      transition: transform 180ms ease;
+    }
+    .toggle input:checked + .slider { background: var(--on); }
+    .toggle input:checked + .slider::before { transform: translateX(30px); }
+  </style>
+</head>
+<body class="no-anim">
+  <div class="header">
+    <div class="title">Maximize Claude</div>
+    <label class="toggle">
+      <input type="checkbox" id="toggle-input">
+      <span class="slider"></span>
+    </label>
+  </div>
+  <div class="bottom" id="bottom" tabindex="0" role="button" aria-label="Edit keyboard shortcut">
+    <div class="footer-line">
+      <span class="label">Shortcut</span>
+      <span class="kbd-display" id="kbd-display">
+        <span class="placeholder">type…</span>
+        <span class="keycaps" id="keycaps"></span>
+      </span>
+    </div>
+    <div class="error-line" aria-live="polite">
+      <span class="kbd-error" id="kbd-error"></span>
+    </div>
+  </div>
+  <script src="popup.js"></script>
+</body>
+</html>
