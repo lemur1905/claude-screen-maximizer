@@ -168,6 +168,34 @@ class Row {
 const rows = FEATURES.map((f) => new Row(f));
 const rowById = Object.fromEntries(rows.map((r) => [r.feature.id, r]));
 
+// Auto-hide-after-send setting — a plain toggle with no shortcut editor.
+// Per-tab state owned by the active tab's content script (defaults ON for
+// regular chat, OFF for /code), read and written via messaging rather than
+// storage. Disabled when the active tab isn't a claude.ai page.
+const autoHideToggle = document.getElementById('autohide-toggle');
+let autoHideTabId = null;
+
+async function loadAutoHide() {
+  try {
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    const res = await chrome.tabs.sendMessage(tab.id, { type: 'get_auto_hide' });
+    autoHideTabId = tab.id;
+    autoHideToggle.checked = !!res.value;
+  } catch {
+    // No content script in the active tab (not a claude.ai page).
+    autoHideToggle.checked = false;
+    autoHideToggle.disabled = true;
+  }
+}
+
+autoHideToggle.addEventListener('change', () => {
+  if (autoHideTabId === null) return;
+  chrome.tabs.sendMessage(autoHideTabId, {
+    type: 'set_auto_hide',
+    value: autoHideToggle.checked,
+  }).catch(() => {});
+});
+
 function shortcutMatches(e, s) {
   return s
     && e.code === s.code
@@ -245,7 +273,7 @@ chrome.storage.onChanged.addListener((changes, area) => {
 
 async function load() {
   const keys = FEATURES.flatMap((f) => [f.hiddenKey, f.shortcutKey]);
-  const res = await chrome.storage.sync.get(keys);
+  const [res] = await Promise.all([chrome.storage.sync.get(keys), loadAutoHide()]);
   for (const feature of FEATURES) {
     const row = rowById[feature.id];
     row.setHidden(res[feature.hiddenKey] === true); // default false (visible)

@@ -7,6 +7,12 @@
 // Storage is the single source of truth. The popup toggle and the keyboard
 // shortcut both flip the storage value; this script reacts to storage
 // changes by adding/removing the hidden class on the page.
+//
+// Sending a message (Enter in the editor) auto-hides both features when
+// auto-hide is on. Unlike the hidden flags, auto-hide is PER-TAB state: it
+// lives only in this script (no storage), defaults by page type — ON on
+// regular chat pages, OFF on /code — and the popup reads/writes the active
+// tab's value via chrome.tabs.sendMessage.
 
 (function() {
   'use strict';
@@ -15,6 +21,7 @@
 
   let promptHidden = false;
   let menusHidden = false;
+  let autoHideOnSubmit = true;
   let promptShortcut = { code: 'Semicolon', meta: true, ctrl: false, alt: false, shift: false };
   let menusShortcut = { code: 'Semicolon', meta: false, ctrl: false, alt: true, shift: false };
 
@@ -227,7 +234,9 @@
     }
 
     // Enter (without modifiers) in the editor = message send → auto-hide both
-    if (event.key === 'Enter' && !event.shiftKey && !event.metaKey && !event.altKey) {
+    // (when the popup's auto-hide toggle is on).
+    if (autoHideOnSubmit
+        && event.key === 'Enter' && !event.shiftKey && !event.metaKey && !event.altKey) {
       const editor = findMainEditor();
       if (editor && editor.contains(event.target)) {
         // Small delay to let the message actually send before hiding.
@@ -284,12 +293,24 @@
     if (changes.menus_shortcut?.newValue) menusShortcut = changes.menus_shortcut.newValue;
   });
 
+  // Per-tab auto-hide: the popup asks for / sets this tab's value.
+  chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
+    if (msg?.type === 'get_auto_hide') {
+      sendResponse({ value: autoHideOnSubmit });
+    } else if (msg?.type === 'set_auto_hide') {
+      autoHideOnSubmit = !!msg.value;
+      sendResponse({ value: autoHideOnSubmit });
+    }
+  });
+
   async function init() {
     console.log('[Claude Maximizer] Initializing...');
 
     // Every new page load starts with both features visible. We write the
     // reset through storage so the popup's toggles and any other open tabs
-    // stay in sync via the storage listener.
+    // stay in sync via the storage listener. Auto-hide is per-tab and just
+    // takes its page-type default here.
+    autoHideOnSubmit = !isCodeMode();
     chrome.storage.sync.set({ prompt_hidden: false, menus_hidden: false });
 
     const res = await chrome.storage.sync.get(['prompt_shortcut', 'menus_shortcut']);

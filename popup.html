@@ -61,6 +61,10 @@
       line-height: 1.25;
     }
 
+    /* Plain setting row (no shortcut editor): label fills the row, pushing
+       the toggle to the far right. */
+    .setting-label { flex: 1; }
+
     .row-main {
       display: flex;
       align-items: center;
@@ -219,6 +223,8 @@
     }
     .toggle input:checked + .slider { background: var(--on); }
     .toggle input:checked + .slider::before { transform: translateX(30px); }
+    .toggle input:disabled { cursor: default; }
+    .toggle:has(input:disabled) { opacity: 0.4; }
   </style>
 </head>
 <body class="no-anim">
@@ -259,6 +265,15 @@
     </div>
     <div class="error-line" aria-live="polite">
       <span class="kbd-error"></span>
+    </div>
+  </div>
+  <div class="row" data-setting="autohide">
+    <div class="row-main">
+      <span class="label setting-label">Auto-hide after send</span>
+      <label class="toggle">
+        <input type="checkbox" class="toggle-input" id="autohide-toggle">
+        <span class="slider"></span>
+      </label>
     </div>
   </div>
   <script src="popup.js"></script>
