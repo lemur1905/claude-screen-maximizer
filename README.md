@@ -58,3 +58,7 @@ The extension runs only on `claude.ai`, makes no network requests, and collects 
 ## Caveats
 
 This is an unofficial project, not affiliated with Anthropic. It depends on claude.ai's DOM structure, which changes without notice — if a shortcut stops working after a site redesign, the element selectors in `content.js` likely need updating.
+
+## License
+
+[MIT](LICENSE)
