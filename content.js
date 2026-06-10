@@ -40,37 +40,37 @@
   }
 
   // Returns ALL elements that should be toggled as part of the "input area".
-  // On /code session pages this can be multiple sibling elements:
-  //   1) The composer column (.epitaxy-chat-column wrapping .epitaxy-prompt)
-  //   2) The bottom-scrim wrapper column (when the page renders one)
-  //   3) The "ready for next turn" indicator row — a small flex row inside the
-  //      conversation column that holds the orange brand asterisk and a
-  //      dropdown. The DOM places it inside .relative.epitaxy-chat-column
-  //      rather than the composer, so hiding the composer alone leaves it
-  //      visible. We hide it together with the composer.
+  // On /code this can be multiple sibling elements:
+  //   1) The composer wrapper — the nearest .epitaxy-composer-width ancestor
+  //      of the main .epitaxy-prompt. The page header shares that class, so
+  //      skip HEADER. (The site dropped the old .epitaxy-chat-column wrapper;
+  //      we keep a walk for it as a fallback for stale DOM variants.)
+  //   2) The "ready for next turn" indicator row — a small flex row inside
+  //      the conversation column with the orange brand asterisk + dropdown.
+  //      It lives in the conversation, not the composer, so hiding the
+  //      composer alone leaves it visible.
+  // The bottom scrim is handled by content.css via the
+  // body.claude-ext-input-hidden class — its nearest shared ancestor is the
+  // whole chat panel, which must NOT be hidden.
   function findInputContainers() {
     if (isCodeMode()) {
       const out = [];
       const prompt = findMainCodePrompt();
       if (prompt) {
-        let el = prompt.parentElement;
-        while (el && el !== document.body) {
-          if (el.classList.contains('epitaxy-chat-column') && el.tagName !== 'HEADER') {
-            out.push(el);
-            break;
+        const wrapper = prompt.closest('.epitaxy-composer-width');
+        if (wrapper && wrapper.tagName !== 'HEADER') {
+          out.push(wrapper);
+        } else {
+          // Fallback: older DOM wrapped the composer in .epitaxy-chat-column.
+          let el = prompt.parentElement;
+          while (el && el !== document.body) {
+            if (el.classList.contains('epitaxy-chat-column') && el.tagName !== 'HEADER') {
+              out.push(el);
+              break;
+            }
+            el = el.parentElement;
           }
-          el = el.parentElement;
-        }
-      }
-      const scrim = document.querySelector('.epitaxy-bottom-scrim');
-      if (scrim) {
-        let el = scrim.parentElement;
-        while (el && el !== document.body) {
-          if (el.classList.contains('epitaxy-chat-column')) {
-            if (!out.includes(el)) out.push(el);
-            break;
-          }
-          el = el.parentElement;
+          if (!out.length) out.push(prompt);
         }
       }
       const readyRow = findCodeReadyTurnRow();
@@ -91,8 +91,13 @@
     // of the conversation, so the last match is the most likely candidate.
     for (let i = stars.length - 1; i >= 0; i--) {
       const star = stars[i];
-      const row = star.closest('.epitaxy-chat-size');
+      // .epitaxy-transcript-width is the current row wrapper;
+      // .epitaxy-chat-size was its predecessor.
+      const row = star.closest('.epitaxy-transcript-width') || star.closest('.epitaxy-chat-size');
       if (!row) continue;
+      // A row we already hid measures 0×0, which the size check below would
+      // reject — and then un-hide could never find it. Ours is always valid.
+      if (row.classList.contains(HIDDEN_CLASS)) return row;
       // The indicator row is short (<=40px); assistant message wrappers use
       // the same class but are tall. Skip those.
       const r = row.getBoundingClientRect();
@@ -157,7 +162,9 @@
       if (tilesShell) {
         for (const el of tilesShell.querySelectorAll('div')) {
           const cls = el.className?.toString?.() || '';
-          if (cls.includes('h-[32px]') && cls.includes('pl-[16px]') && cls.includes('pr-[16px]')) {
+          // Right padding drifted from pr-[16px] to pr-[var(--epitaxy-titlebar-pr,16px)],
+          // so only require the pr- prefix.
+          if (cls.includes('h-[32px]') && cls.includes('pl-[16px]') && cls.includes('pr-[')) {
             return el;
           }
         }
@@ -280,21 +287,14 @@
   async function init() {
     console.log('[Claude Maximizer] Initializing...');
 
-    const res = await chrome.storage.sync.get([
-      'prompt_hidden', 'menus_hidden', 'prompt_shortcut', 'menus_shortcut',
-    ]);
-    if (typeof res.prompt_hidden === 'boolean') promptHidden = res.prompt_hidden;
-    if (typeof res.menus_hidden === 'boolean') menusHidden = res.menus_hidden;
+    // Every new page load starts with both features visible. We write the
+    // reset through storage so the popup's toggles and any other open tabs
+    // stay in sync via the storage listener.
+    chrome.storage.sync.set({ prompt_hidden: false, menus_hidden: false });
+
+    const res = await chrome.storage.sync.get(['prompt_shortcut', 'menus_shortcut']);
     if (res.prompt_shortcut) promptShortcut = res.prompt_shortcut;
     if (res.menus_shortcut) menusShortcut = res.menus_shortcut;
-
-    // Apply restored state. Don't focus the editor on initial load.
-    if (promptHidden) {
-      const containers = findInputContainers();
-      containers.forEach(el => el.classList.add(HIDDEN_CLASS));
-      document.body.classList.add('claude-ext-input-hidden');
-    }
-    if (menusHidden) applyMenusHidden(true);
 
     document.addEventListener('keydown', handleKeyDown, true);
     setupObserver();
