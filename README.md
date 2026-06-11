@@ -1,4 +1,4 @@
-# Claude Screen Maximizer
+# Screen Maximizer for Claude
 
 A Chrome extension that reclaims screen real estate on [claude.ai](https://claude.ai). Hide the prompt box, sidebar, and menus with keyboard shortcuts, on both regular Claude chats and [Claude Code](https://claude.ai/code) sessions, so the conversation gets the whole screen.
 
@@ -41,9 +41,16 @@ Restoring the prompt box automatically focuses the editor so you can keep typing
 └── icons/              # Static extension icons (16/48/128px)
 ```
 
-## Privacy
+## Privacy policy
 
-The extension runs only on `claude.ai`, makes no network requests, and collects no data. The only stored values are your shortcut bindings and toggle states, kept in Chrome's extension storage.
+Screen Maximizer for Claude does not collect, transmit, sell, or share any user data.
+
+- The extension runs only on `claude.ai` pages and makes no network requests of any kind.
+- It does not read, store, or transmit your conversations or any page content. It only adds and removes CSS classes to show or hide page elements.
+- The only stored values are your shortcut bindings and toggle states, kept locally in Chrome's extension storage (`chrome.storage.sync`) and synced by Chrome to your own Google account if you have extension sync enabled.
+- There are no analytics, no tracking, no third-party services, and no remote code.
+
+If you have a privacy question, please open an issue on this repository.
 
 ## Caveats
 
