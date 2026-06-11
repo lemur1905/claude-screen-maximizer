@@ -55,6 +55,9 @@ https://github.com/lemur1905/claude-screen-maximizer
 
 **Language**: English
 
+**Store icon**: upload `store/icon-128.png` (128x128, art inset to 96x96 with
+transparent padding per CWS guidance).
+
 **Screenshots**: upload `store/screenshot-1.png` (1280x800). The store allows
 up to 5; consider adding a before/after capture of a claude.ai page from a
 clean profile (avoid showing real conversation titles or content).
