@@ -3,6 +3,12 @@
 Everything to paste into the Developer Dashboard forms. Fields below map 1:1
 to the dashboard.
 
+**Status**: submitted for review on 2026-06-11 (v1.2.0), auto-publish on pass.
+Item ID `bjiohpgikgcolbeidjaokbijbgmgbcim`; listing URL once live:
+https://chromewebstore.google.com/detail/bjiohpgikgcolbeidjaokbijbgmgbcim
+Publisher account: ijkahn@gmail.com (contact email lemur1905.dev@gmail.com
+is NOT a developer account — don't register/pay for it).
+
 ## Store listing tab
 
 **Name** (comes from manifest.json on upload)
@@ -58,9 +64,11 @@ https://github.com/lemur1905/claude-screen-maximizer
 **Store icon**: upload `store/icon-128.png` (128x128, art inset to 96x96 with
 transparent padding per CWS guidance).
 
-**Screenshots**: upload `store/screenshot-1.png` (1280x800). The store allows
-up to 5; consider adding a before/after capture of a claude.ai page from a
-clean profile (avoid showing real conversation titles or content).
+**Screenshots**: upload `store/screenshot-1.jpg` (1280x800; the JPEG
+conversion of screenshot-1.png — the store rejects PNGs with an alpha
+channel, which Chrome-rendered PNGs have). The store allows up to 5;
+consider adding a before/after capture of a claude.ai page from a clean
+profile (avoid showing real conversation titles or content).
 
 ## Privacy tab
 
